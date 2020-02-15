@@ -12,12 +12,19 @@ import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.Spark;
 import edu.wpi.first.wpilibj.SpeedControllerGroup;
-//import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.VictorSP;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
 import edu.wpi.first.wpilibj.Talon;
+import edu.wpi.cscore.CvSink;
+import edu.wpi.cscore.CvSource;
+//import edu.wpi.cscore.MjpegServer;
+import edu.wpi.cscore.UsbCamera;
+import edu.wpi.first.cameraserver.CameraServer;
+
+
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -32,9 +39,10 @@ public class Robot extends TimedRobot {
   private String m_autoSelected;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
 
-  XboxController driver = new XboxController(0);
+  XboxController driver1 = new XboxController(0);
+  XboxController driver2  = new XboxController(1);
   Talon in = new Talon(1);
-  Talon up = new Talon(2);
+  Talon up = new Talon(2); 
   Spark shootL = new Spark(4);
   Spark shootR = new Spark(5);
   VictorSP rDrive1 = new VictorSP(6);
@@ -44,8 +52,17 @@ public class Robot extends TimedRobot {
   SpeedControllerGroup rDrive = new SpeedControllerGroup(rDrive1, rDrive2);
   SpeedControllerGroup lDrive = new SpeedControllerGroup(lDrive1, lDrive2);
   Talon hang = new Talon(3);
-  
+  UsbCamera camera1;
+  Boolean shooterOn = false;
+  Boolean reverse = false;
+  double reverseN = 1;
+  double shootSpeed = .8;
+
+  public static final double speedLimit = 1;
+
+
   DifferentialDrive drive = new DifferentialDrive(rDrive, lDrive);
+
 
   /**
    * This function is run when the robot is first started up and should be
@@ -56,6 +73,16 @@ public class Robot extends TimedRobot {
     m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
     m_chooser.addOption("My Auto", kCustomAuto);
     SmartDashboard.putData("Auto choices", m_chooser);
+    
+    // Creates UsbCamera and MjpegServer [1] and connects them
+    CameraServer.getInstance().startAutomaticCapture();
+
+    // Creates the CvSink and connects it to the UsbCamera
+    CvSink cvSink = CameraServer.getInstance().getVideo();
+
+    // Creates the CvSource and MjpegServer [2] and connects them
+    CvSource outputStream = CameraServer.getInstance().putVideo("Blur", 640, 480);
+    
   }
 
   /**
@@ -99,7 +126,20 @@ public class Robot extends TimedRobot {
         break;
       case kDefaultAuto:
       default:
-        // Put default auto code here
+        in.set(-.5);
+        Timer.delay(.2);
+        in.set(0);
+
+        up.set(1);
+        shoot(1);
+        Timer.delay(2);
+        up.set(0);
+        shoot(0);
+
+        drive.tankDrive(.5, .5);
+        Timer.delay(3);
+        drive.tankDrive(0, 0);
+
         break;
     }
   }
@@ -108,41 +148,74 @@ public class Robot extends TimedRobot {
    * This function is called periodically during operator control.
    */
 
-  //drive train 
+  
   @Override
   public void teleopPeriodic() {
-    drive.tankDrive(driver.getY(Hand.kRight), driver.getY(Hand.kLeft));
+    //drive train 
+    drive.tankDrive(reverseN * driver1.getY(Hand.kRight), reverseN * driver1.getY(Hand.kLeft));
 
+    if(driver1.getStartButtonPressed()) {
+      reverse = reverse^true;
+    } 
+    
+    if(reverse) {
+      reverseN = speedLimit;
+    } else {
+      reverseN = -speedLimit; 
+    }
+    
     //gun (shooter)
-    if(driver.getAButton()) {
-      shoot(1);
+    if (driver2.getXButtonPressed()){
+      shooterOn = shooterOn^true;
+    }
+    if (driver2.getPOV() == 0 && shootSpeed == .8) {
+      shootSpeed = 1.0;
+    } else if (driver2.getPOV() == 4 && shootSpeed == 1) {
+      shootSpeed = .8;
+    }
+
+    if (shooterOn) {
+      shoot(shootSpeed);
     } else {
       shoot(0);
     }
-
+      
     //hook 
-    if(driver.getBumper(Hand.kLeft)) {
+    if(driver1.getBumper(Hand.kLeft)) {
       hang.set(1);
-    } else if(driver.getBumper(Hand.kRight)) {
+    } else if(driver1.getBumper(Hand.kRight)) {
       hang.set(-1);
     } else {
       hang.set(0);
     }
 
     //succ (intake)
-    if(driver.getXButton()) {
+    if(driver2.getBumper(Hand.kLeft)) {
       in.set(.5);
+    } else if (driver2.getBumper(Hand.kRight)) {
+      in.set(-.3);
     } else {
       in.set(0);
-    }
+    } 
 
     //rail
-    if(driver.getBButton()) {
-      up.set(.5);
+    if(driver2.getBButton()) {
+      up.set(1);
+    } else if(driver2.getAButton()) {
+      up.set(-.5);
     } else {
       up.set(0);
     }
-
+    //Pivot left
+    if(driver1.getTriggerAxis(Hand.kLeft) > .5 && driver1.getY(Hand.kLeft) < .3 && driver1.getY(Hand.kRight) < .3) {
+      drive.tankDrive(-.4, .4);
+    } 
+  
+    //Pivot right
+    if(driver1.getTriggerAxis(Hand.kRight) > .5 && driver1.getY(Hand.kRight) < .3 && driver1.getY(Hand.kLeft) < .3) {
+      drive.tankDrive(.4, -.4);
+    } 
+    
   }
 
   /**
