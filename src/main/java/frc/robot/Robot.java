@@ -53,6 +53,7 @@ public class Robot extends TimedRobot {
   SpeedControllerGroup lDrive = new SpeedControllerGroup(lDrive1, lDrive2);
   Talon hang = new Talon(3);
   UsbCamera camera1;
+  UsbCamera camera2;
   Boolean shooterOn = false;
   Boolean reverse = false;
   double reverseN = 1;
@@ -64,7 +65,7 @@ public class Robot extends TimedRobot {
   DifferentialDrive drive = new DifferentialDrive(rDrive, lDrive);
 
 
-  /**
+  /**;
    * This function is run when the robot is first started up and should be
    * used for any initialization code.
    */
@@ -76,12 +77,15 @@ public class Robot extends TimedRobot {
     
     // Creates UsbCamera and MjpegServer [1] and connects them
     CameraServer.getInstance().startAutomaticCapture();
+    CameraServer.getInstance().startAutomaticCapture();
 
     // Creates the CvSink and connects it to the UsbCamera
     CvSink cvSink = CameraServer.getInstance().getVideo();
+    CvSink cvSink2 = CameraServer.getInstance().getVideo();
 
     // Creates the CvSource and MjpegServer [2] and connects them
     CvSource outputStream = CameraServer.getInstance().putVideo("Blur", 640, 480);
+    CvSource outputStream2 = CameraServer.getInstance().putVideo("Blur", 640, 480);
     
   }
 
