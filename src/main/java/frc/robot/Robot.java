@@ -58,6 +58,7 @@ public class Robot extends TimedRobot {
   Boolean reverse = false;
   double reverseN = 1;
   double shootSpeed = .8;
+  Spark colorW = new Spark(10);
 
   public static final double speedLimit = 1;
 
@@ -218,8 +219,16 @@ public class Robot extends TimedRobot {
     //Pivot right
     if(driver1.getTriggerAxis(Hand.kRight) > .5 && driver1.getY(Hand.kRight) < .3 && driver1.getY(Hand.kLeft) < .3) {
       drive.tankDrive(.4, -.4);
-    } 
+    }
     
+    //Color wheel
+    if (driver1.getAButtonPressed()) {
+      colorW.set(1);
+    } else if(driver1.getBButtonPressed()) {
+      colorW.set(-1);
+    } else {
+      colorW.set(0);
+    }
   }
 
   /**
